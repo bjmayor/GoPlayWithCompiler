@@ -1,5 +1,3 @@
-# GoPlayWithCompiler
-编译原理之美-宫文学 golang实现版本
 编译原理之美-宫文学-学习摘要
 [TOC]
 # 实现一门脚本语言.原理篇
@@ -137,5 +135,109 @@ antlr -Dlanguage=Go Hello.g4
 
 生成了3个文件`Hello.interp`   `Hello.tokens`  `hello_lexer.go`
 
+手写一个grun.go 
+```
+package main
+
+import (
+	parser "GoPlayWithCompiler/antlrdemo"
+	"fmt"
+	"github.com/antlr/antlr4/runtime/Go/antlr"
+	"os"
+)
+
+
+func main() {
+	input, _ := antlr.NewFileStream(os.Args[1])
+	lexer := parser.NewHello(input)
+	stream := antlr.NewCommonTokenStream(lexer, 0)
+	stream.Fill()
+	for _, token := range stream.GetAllTokens() {
+		fmt.Println(token)
+	}
+
+}
+
+```
+
+执行以下命令获取token:
+`go run cmds/hello/main.go antlrdemo/Hello/hello.play`
+
+生成如下文本：
+```
+[@0,0:2='int',<2>,1:0]
+[@1,4:6='age',<19>,1:4]
+[@2,8:8='=',<5>,1:8]
+[@3,10:11='45',<3>,1:10]
+[@4,12:12=';',<10>,1:12]
+[@5,14:15='if',<1>,2:0]
+[@6,17:17='(',<17>,2:3]
+[@7,18:20='age',<19>,2:4]
+[@8,22:23='>=',<6>,2:8]
+[@9,25:26='17',<3>,2:11]
+[@10,27:27='+',<8>,2:13]
+[@11,28:28='8',<3>,2:14]
+[@12,29:29='+',<8>,2:15]
+[@13,30:31='20',<3>,2:16]
+[@14,32:32=')',<18>,2:18]
+[@15,33:33='{',<15>,2:19]
+[@16,37:42='printf',<19>,3:2]
+[@17,43:43='(',<17>,3:8]
+[@18,44:59='"Hello old man!"',<4>,3:9]
+[@19,60:60=')',<18>,3:25]
+[@20,61:61=';',<10>,3:26]
+[@21,63:63='}',<16>,4:0]
+[@22,64:63='<EOF>',<-1>,4:1]
+```
 
 ### 语法分析
+
+`PlayScript.g4`
+```
+grammar PlayScript;
+import CommonLexer;   // 导入词法定义
+
+/* 下面的内容加到所生成的 Java 源文件的头部，如包名称，import 语句等。*/
+@header {
+package antlrtest;
+}
+expression
+    :   assignmentExpression
+    |   expression ',' assignmentExpression
+    ;
+
+assignmentExpression
+    :   additiveExpression
+    |   Identifier assignmentOperator additiveExpression
+    ;
+
+assignmentOperator
+    :   '='
+    |   '*='
+    |  '/='
+    |   '%='
+    |   '+='
+    |   '-='
+    ;
+
+additiveExpression
+    :   multiplicativeExpression
+    |   additiveExpression '+' multiplicativeExpression
+    |   additiveExpression '-' multiplicativeExpression
+    ;
+
+multiplicativeExpression
+    :   primaryExpression
+    |   multiplicativeExpression '*' primaryExpression
+    |   multiplicativeExpression '/' primaryExpression
+    |   multiplicativeExpression '%' primaryExpression
+    ;
+```
+
+
+生成目标文件`antlr -Dlanguage=Go PlayScript.g4`
+手写个交互式脚本来解析语法，并画出ast树。具体[参考](https://github.com/bjmayor/GoPlayWithCompiler/blob/master/cmds/playScript/main.go)
+
+[json](https://github.com/antlr/grammars-v4/blob/master/json/JSON.g4)的这个语法很简单，适合学习。
+
+
