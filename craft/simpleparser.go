@@ -33,25 +33,25 @@ func (cal *SimpleParser) evaluate(node ASTNoder, indent string) int {
 		}
 	case ASTNodeType_AddtiveExp:
 		child1 := node.GetChildren()[0]
-		value1 := cal.evaluate(child1, indent+"\t");
-		child2 := node.GetChildren()[1];
-		value2 := cal.evaluate(child2, indent+"\t");
-		if (node.GetText() == "+") {
-			result = value1 + value2;
+		value1 := cal.evaluate(child1, indent+"\t")
+		child2 := node.GetChildren()[1]
+		value2 := cal.evaluate(child2, indent+"\t")
+		if node.GetText() == "+" {
+			result = value1 + value2
 		} else {
-			result = value1 - value2;
+			result = value1 - value2
 		}
 	case ASTNodeType_IntLiteral:
 		result, _ = strconv.Atoi(node.GetText())
 	case ASTNodeType_Multiplicative:
 		child1 := node.GetChildren()[0]
-		value1 := cal.evaluate(child1, indent+"\t");
-		child2 := node.GetChildren()[1];
-		value2 := cal.evaluate(child2, indent+"\t");
-		if (node.GetText() == "*") {
-			result = value1 * value2;
+		value1 := cal.evaluate(child1, indent+"\t")
+		child2 := node.GetChildren()[1]
+		value2 := cal.evaluate(child2, indent+"\t")
+		if node.GetText() == "*" {
+			result = value1 * value2
 		} else {
-			result = value1 / value2;
+			result = value1 / value2
 		}
 	}
 	return result
@@ -117,7 +117,10 @@ func (cal *SimpleParser) intDeclare(reader TokenReader) *ASTNoder {
 			}
 		}
 	}
-	return &node
+	if node != nil {
+		return &node
+	}
+	return nil
 }
 
 /**
@@ -257,7 +260,7 @@ func (cal *SimpleParser) primary(reader TokenReader) *ASTNoder {
  * 语法解析：乘法表达式
  */
 func (cal *SimpleParser) multiplicative(reader TokenReader) *ASTNoder {
-	child1 := cal.primary(reader);
+	child1 := cal.primary(reader)
 	var node ASTNoder
 	token := reader.Peek()
 	if child1 != nil && token != nil {

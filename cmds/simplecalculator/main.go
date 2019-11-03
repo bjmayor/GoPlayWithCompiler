@@ -38,7 +38,7 @@ func main() {
 		}
 		scriptText += input + "\n"
 		if strings.HasSuffix(scriptText, ";\n") {
-			fmt.Println(scriptText)
+			fmt.Println("your input is :" + scriptText)
 			root := calculator.Parse(scriptText)
 			if verbose {
 				craft.DumpAST(*root, "")
