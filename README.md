@@ -2,8 +2,7 @@
 [TOC]
 # 实现一门脚本语言.原理篇
 ## 理解代码:编译器的前端技术
-![fd972d81cd8b35abbad97e4d6c8b47aa.png](evernotecid://9FAD049A-8342-475F-9BFD-2B663B1AF63C/appyinxiangcom/2980418/ENResource/p8474)
-
+![06b80f8484f4d88c6510213eb27f2093.webp](./assets/06b80f8484f4d88c6510213eb27f2093.webp)
 这里的“前端”指的是编译器对程序代码的分析和理解过程。
 “后端”则是生成目标代码，跟目标机器有关。
 
@@ -16,6 +15,7 @@
 >语法分析是把程序的结构识别出来，并形成一棵便于由计算机处理的抽象语法树。可以用递归下降的算法来实现。
 
 mac上使用下面的命令可以体验下ast树
+
 `clang -cc1 -ast-dump hello.c`
 
 [js ast体验](https://resources.jointjs.com/demos/javascript-ast)
@@ -59,7 +59,7 @@ add ::= mul | add + mul
 
 扩展巴科斯范式 EBNF
 ```
-add -> mul ( + mul ) * 
+add -> mul ( + mul ) *
 ```
 
 一个规律：
@@ -101,8 +101,8 @@ IntLiteral:        [0-9]+;
 StringLiteral:      '"' .*? '"' ;  // 字符串字面量
 
 // 操作符
-AssignmentOP:       '=' ;    
-RelationalOP:       '>'|'>='|'<' |'<=' ;    
+AssignmentOP:       '=' ;
+RelationalOP:       '>'|'>='|'<' |'<=' ;
 Star:               '*';
 Plus:               '+';
 Sharp:              '#';
@@ -135,7 +135,7 @@ antlr -Dlanguage=Go Hello.g4
 
 生成了3个文件`Hello.interp`   `Hello.tokens`  `hello_lexer.go`
 
-手写一个grun.go 
+手写一个grun.go
 ```
 package main
 
@@ -239,5 +239,3 @@ multiplicativeExpression
 手写个交互式脚本来解析语法，并画出ast树。具体[参考](https://github.com/bjmayor/GoPlayWithCompiler/blob/master/cmds/playScript/main.go)
 
 [json](https://github.com/antlr/grammars-v4/blob/master/json/JSON.g4)的这个语法很简单，适合学习。
-
-
