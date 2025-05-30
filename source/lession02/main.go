@@ -8,19 +8,18 @@ import (
 type TokenType string
 
 const (
-	ILLEGAL = "ILLEGAL" // 未知字符
-	EOF     = "EOF"     // 文件结束
-
-	// 标识符和字面量
-	IDENT = "IDENT" // 变量名
-	INT   = "INT"   // 整数
-	GT    = ">"
-	GE    = ">="
-	// 运算符
-	ASSIGN = "="
-	PLUS   = "+"
-
-	// 分隔符
+	ILLEGAL   = "ILLEGAL"
+	EOF       = "EOF"
+	IDENT     = "IDENT"
+	INT       = "INT"
+	GT        = ">"
+	GE        = ">="
+	INT_TYPE  = "INT_TYPE"
+	ASSIGN    = "="
+	PLUS      = "+"
+	MINUS     = "-"
+	MUL       = "*"
+	DIV       = "/"
 	COMMA     = ","
 	SEMICOLON = ";"
 	LPAREN    = "("
@@ -34,128 +33,195 @@ type Token struct {
 	Literal string
 }
 
-var keywords = map[string]TokenType{
-	"int":    "INT",
-	"return": "RETURN",
+func isLetter(ch rune) bool {
+	return unicode.IsLetter(ch) || ch == '_'
+}
+func isDigit(ch rune) bool {
+	return unicode.IsDigit(ch)
+}
+func isBlank(ch rune) bool {
+	return ch == ' ' || ch == '\t' || ch == '\n' || ch == '\r'
 }
 
-func LookupIdent(ident string) TokenType {
-	if tok, ok := keywords[ident]; ok {
-		return tok
-	}
-	return IDENT
+type DfaState int
+
+const (
+	Initial DfaState = iota
+	Id
+	Int1
+	Int2
+	Int3
+	GTState
+	GEState
+	IntLiteral
+	Assign
+	Plus
+	Minus
+	Mul
+	Div
+	SemiColon
+	LP
+	RP
+	LB
+	RB
+)
+
+var keywords = map[string]TokenType{
+	"int": INT_TYPE,
 }
 
 type Lexer struct {
-	input        string
-	position     int  // 当前字符位置
-	readPosition int  // 下一个字符位置
-	ch           byte // 当前字符
+	input  []rune
+	pos    int
+	state  DfaState
+	tokens []Token
 }
 
 func New(input string) *Lexer {
-	l := &Lexer{input: input}
-	l.readChar() // 初始化第一个字符
-	return l
-}
-
-func (l *Lexer) readChar() {
-	if l.readPosition >= len(l.input) {
-		l.ch = 0 // ASCII 的 NUL，表示 EOF
-	} else {
-		l.ch = l.input[l.readPosition]
+	return &Lexer{
+		input: []rune(input),
+		pos:   0,
+		state: Initial,
 	}
-	l.position = l.readPosition
-	l.readPosition++
 }
 
-func (l *Lexer) peekChar() byte {
-	if l.readPosition >= len(l.input) {
+func (l *Lexer) readChar() rune {
+	if l.pos >= len(l.input) {
 		return 0
 	}
-	return l.input[l.readPosition]
+	ch := l.input[l.pos]
+	l.pos++
+	return ch
+}
+
+func (l *Lexer) peekChar() rune {
+	if l.pos >= len(l.input) {
+		return 0
+	}
+	return l.input[l.pos]
 }
 
 func (l *Lexer) NextToken() Token {
-	var tok Token
+	var tokenText []rune
+	state := Initial
+	var ch rune
 
-	l.skipWhitespace()
-
-	switch l.ch {
-	case '>':
-		if l.peekChar() == '=' {
-			ch := l.ch
-			l.readChar()
-			tok = Token{Type: GE, Literal: string(ch) + string(l.ch)}
-		} else {
-			tok = newToken(GT, l.ch)
+	for {
+		if l.pos >= len(l.input) {
+			if len(tokenText) > 0 {
+				return l.makeToken(state, string(tokenText))
+			}
+			return Token{Type: EOF, Literal: ""}
 		}
-	case '=':
-		tok = newToken(ASSIGN, l.ch)
-	case ';':
-		tok = newToken(SEMICOLON, l.ch)
-	case '(':
-		tok = newToken(LPAREN, l.ch)
-	case ')':
-		tok = newToken(RPAREN, l.ch)
-	case '{':
-		tok = newToken(LBRACE, l.ch)
-	case '}':
-		tok = newToken(RBRACE, l.ch)
-	case 0:
-		tok.Literal = ""
-		tok.Type = EOF
-	default:
-		if isLetter(l.ch) {
-			tok.Literal = l.readIdentifier()
-			tok.Type = LookupIdent(tok.Literal)
-			return tok
-		} else if isDigit(l.ch) {
-			tok.Type = INT
-			tok.Literal = l.readNumber()
-			return tok
-		} else {
-			tok = newToken(ILLEGAL, l.ch)
+		ch = l.readChar()
+		switch state {
+		case Initial:
+			if isBlank(ch) {
+				continue
+			} else if isLetter(ch) {
+				tokenText = append(tokenText, ch)
+				if ch == 'i' {
+					state = Int1
+				} else {
+					state = Id
+				}
+			} else if isDigit(ch) {
+				tokenText = append(tokenText, ch)
+				state = IntLiteral
+			} else {
+				switch ch {
+				case '>':
+					tokenText = append(tokenText, ch)
+					state = GTState
+				case '=':
+					return Token{Type: ASSIGN, Literal: string(ch)}
+				case '+':
+					return Token{Type: PLUS, Literal: string(ch)}
+				case '-':
+					return Token{Type: MINUS, Literal: string(ch)}
+				case '*':
+					return Token{Type: MUL, Literal: string(ch)}
+				case '/':
+					return Token{Type: DIV, Literal: string(ch)}
+				case ';':
+					return Token{Type: SEMICOLON, Literal: string(ch)}
+				case '(':
+					return Token{Type: LPAREN, Literal: string(ch)}
+				case ')':
+					return Token{Type: RPAREN, Literal: string(ch)}
+				case '{':
+					return Token{Type: LBRACE, Literal: string(ch)}
+				case '}':
+					return Token{Type: RBRACE, Literal: string(ch)}
+				default:
+					return Token{Type: ILLEGAL, Literal: string(ch)}
+				}
+			}
+		case Id:
+			if isLetter(ch) || isDigit(ch) {
+				tokenText = append(tokenText, ch)
+			} else {
+				l.pos-- // unread
+				return l.makeToken(Id, string(tokenText))
+			}
+		case Int1:
+			if ch == 'n' {
+				tokenText = append(tokenText, ch)
+				state = Int2
+			} else if isLetter(ch) || isDigit(ch) {
+				tokenText = append(tokenText, ch)
+				state = Id
+			} else {
+				l.pos--
+				return l.makeToken(Id, string(tokenText))
+			}
+		case Int2:
+			if ch == 't' {
+				tokenText = append(tokenText, ch)
+				state = Int3
+			} else if isLetter(ch) || isDigit(ch) {
+				tokenText = append(tokenText, ch)
+				state = Id
+			} else {
+				l.pos--
+				return l.makeToken(Id, string(tokenText))
+			}
+		case Int3:
+			if isBlank(ch) {
+				return Token{Type: INT_TYPE, Literal: string(tokenText)}
+			} else if isLetter(ch) || isDigit(ch) {
+				tokenText = append(tokenText, ch)
+				state = Id
+			} else {
+				l.pos--
+				return l.makeToken(Id, string(tokenText))
+			}
+		case IntLiteral:
+			if isDigit(ch) {
+				tokenText = append(tokenText, ch)
+			} else {
+				l.pos--
+				return Token{Type: INT, Literal: string(tokenText)}
+			}
+		case GTState:
+			if ch == '=' {
+				return Token{Type: GE, Literal: ">="}
+			} else {
+				l.pos--
+				return Token{Type: GT, Literal: ">"}
+			}
 		}
 	}
-
-	l.readChar()
-	return tok
 }
 
-// 辅助函数
-func newToken(tokenType TokenType, ch byte) Token {
-	return Token{Type: tokenType, Literal: string(ch)}
-}
-
-func (l *Lexer) readIdentifier() string {
-	position := l.position
-	for isLetter(l.ch) {
-		l.readChar()
+func (l *Lexer) makeToken(state DfaState, text string) Token {
+	if state == Int3 && text == "int" {
+		return Token{Type: INT_TYPE, Literal: text}
 	}
-	return l.input[position:l.position]
-}
-
-func (l *Lexer) readNumber() string {
-	position := l.position
-	for isDigit(l.ch) {
-		l.readChar()
+	if tok, ok := keywords[text]; ok {
+		return Token{Type: tok, Literal: text}
 	}
-	return l.input[position:l.position]
-}
-
-func (l *Lexer) skipWhitespace() {
-	for l.ch == ' ' || l.ch == '\t' || l.ch == '\n' || l.ch == '\r' {
-		l.readChar()
-	}
-}
-
-func isLetter(ch byte) bool {
-	return unicode.IsLetter(rune(ch)) || ch == '_'
-}
-
-func isDigit(ch byte) bool {
-	return unicode.IsDigit(rune(ch))
+	return Token{Type: IDENT, Literal: text}
 }
 
 func main() {
