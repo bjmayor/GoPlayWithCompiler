@@ -1,3 +1,9 @@
+## 语法分析（一）：纯手工打造公式计算器
+主要是 语法分析的原理和递归下降算法，上下文无关文法。
+本课稍有单独，需要看原文。
+[作者源码](https://github.com/RichardGong/PlayWithCompiler/blob/master/lab/craft/SimpleCalculator.java)
+
+自己手动实现一遍有助于理解。
 这节引入了 几个概念：
 - 上下文无关文法
 

@@ -14,6 +14,16 @@ type Parser struct {
 	peekTok token.Token
 }
 
+// 新增：表达式语句节点和解析方法
+func (p *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+	expr := p.parseAdditiveExpression()
+	// 可选：检查分号
+	if p.curTok.Type == token.SEMICOLON {
+		p.nextToken()
+	}
+	return &ast.ExpressionStatement{Expr: expr}
+}
+
 func New(l *lexer.Lexer) *Parser {
 	p := &Parser{l: l}
 	// 读取两个 Token 初始化 curTok 和 peekTok
@@ -39,28 +49,20 @@ func (p *Parser) Parse() *ast.SimpleASTNode {
 	return rootNode
 }
 
-// 解析语句（示例：只处理 let 语句）
+// 解析语句（支持变量声明和表达式语句）
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curTok.Type {
-	case token.LET:
-		return p.parseLetStatement()
 	case token.INT_TYPE:
 		return p.parseVarDeclaration()
+	case token.INT, token.LPAREN:
+		// 以数字或左括号开头的，解析为表达式语句
+		return p.parseExpressionStatement()
 	default:
 		return nil
 	}
 }
 
-func (p *Parser) parseLetStatement() *ast.LetStatement {
-	stmt := &ast.LetStatement{Token: p.curTok}
-	// 这里简化为直接消费 Token，实际需要完整解析 let x = 5; 的结构
-	p.nextToken() // 跳过 let
-	p.nextToken() // 跳过标识符
-	p.nextToken() // 跳过 =
-	p.nextToken() // 跳过值
-	p.nextToken() // 跳过 ;
-	return stmt
-}
+
 
 // 解析 int a = 10; 这种声明
 func (p *Parser) parseVarDeclaration() *ast.VarDeclaration {
@@ -81,15 +83,7 @@ func (p *Parser) parseVarDeclaration() *ast.VarDeclaration {
 	// 处理可选的初始化部分
 	if p.curTok.Type == token.ASSIGN {
 		p.nextToken() // 消耗掉 =
-
-		// 解析右侧表达式（简化为只解析整数）
-		if p.curTok.Type != token.INT {
-			panic("expected integer value")
-		}
-		val, _ := strconv.ParseInt(p.curTok.Literal, 10, 64)
-		decl.Value = &ast.IntegerLiteral{Token: p.curTok, Value: val}
-
-		p.nextToken() // 消耗掉值
+		decl.Value = p.parseAdditiveExpression()
 	}
 
 	// 检查分号
@@ -98,4 +92,57 @@ func (p *Parser) parseVarDeclaration() *ast.VarDeclaration {
 	}
 
 	return decl
+}
+
+// ===== 新增：表达式解析相关 =====
+
+// 解析加法表达式
+func (p *Parser) parseAdditiveExpression() ast.Expression {
+	left := p.parseMultiplicativeExpression()
+	for p.curTok.Type == token.PLUS || p.curTok.Type == token.MINUS {
+		op := p.curTok
+		p.nextToken()
+		right := p.parseMultiplicativeExpression()
+		left = &ast.BinaryExpression{
+			Left:     left,
+			Operator: op,
+			Right:    right,
+		}
+	}
+	return left
+}
+
+// 解析乘法表达式
+func (p *Parser) parseMultiplicativeExpression() ast.Expression {
+	left := p.parsePrimary()
+	for p.curTok.Type == token.ASTERISK || p.curTok.Type == token.SLASH {
+		op := p.curTok
+		p.nextToken()
+		right := p.parsePrimary()
+		left = &ast.BinaryExpression{
+			Left:     left,
+			Operator: op,
+			Right:    right,
+		}
+	}
+	return left
+}
+
+// 解析基础表达式（整数字面量、括号等）
+func (p *Parser) parsePrimary() ast.Expression {
+	if p.curTok.Type == token.INT {
+		val, _ := strconv.ParseInt(p.curTok.Literal, 10, 64)
+		node := &ast.IntegerLiteral{Token: p.curTok, Value: val}
+		p.nextToken()
+		return node
+	} else if p.curTok.Type == token.LPAREN {
+		p.nextToken()
+		exp := p.parseAdditiveExpression()
+		if p.curTok.Type != token.RPAREN {
+			panic("expected )")
+		}
+		p.nextToken()
+		return exp
+	}
+	panic("invalid primary expression")
 }

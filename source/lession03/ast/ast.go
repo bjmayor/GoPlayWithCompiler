@@ -29,6 +29,22 @@ type SimpleASTNode struct {
 	ChildNodes []Node      // 子节点
 }
 
+// 实现 Node 接口的 String() 方法，递归打印 AST
+func (n *SimpleASTNode) String() string {
+	result := n.TokenLiteral()
+	if len(n.ChildNodes) > 0 {
+		result += " ["
+		for i, child := range n.ChildNodes {
+			if i > 0 {
+				result += ", "
+			}
+			result += child.String()
+		}
+		result += "]"
+	}
+	return result
+}
+
 func (n *SimpleASTNode) TokenLiteral() string {
 	return n.Token.Literal
 }
@@ -41,18 +57,7 @@ func NewSimpleASTNode(tok token.Token, children []Node) *SimpleASTNode {
 }
 
 // Let 语句节点
-type LetStatement struct {
-	Token token.Token // LET 令牌
-	Name  *Identifier // 变量名
-	Value Expression  // 赋值表达式
-}
 
-func (ls *LetStatement) statementNode()       {}
-func (ls *LetStatement) TokenLiteral() string { return ls.Token.Literal }
-
-func (ls *LetStatement) String() string {
-	return fmt.Sprintf("%s %s = %s;", ls.TokenLiteral(), ls.Name.String(), ls.Value.String())
-}
 
 // 标识符节点
 type Identifier struct {
@@ -92,4 +97,26 @@ func (il *IntegerLiteral) TokenLiteral() string { return il.Token.Literal }
 
 func (il *IntegerLiteral) String() string {
 	return fmt.Sprintf("%d", il.Value)
+}
+
+// 表达式语句节点
+type ExpressionStatement struct {
+	Expr Expression
+}
+
+func (es *ExpressionStatement) statementNode()      {}
+func (es *ExpressionStatement) TokenLiteral() string { return es.Expr.TokenLiteral() }
+func (es *ExpressionStatement) String() string       { return es.Expr.String() }
+
+// 二元表达式节点（如 1 + 2, 3 * 4）
+type BinaryExpression struct {
+	Left     Expression
+	Operator token.Token
+	Right    Expression
+}
+
+func (be *BinaryExpression) expressionNode()      {}
+func (be *BinaryExpression) TokenLiteral() string { return be.Operator.Literal }
+func (be *BinaryExpression) String() string {
+	return fmt.Sprintf("(%s %s %s)", be.Left.String(), be.Operator.Literal, be.Right.String())
 }

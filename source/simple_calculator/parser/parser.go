@@ -42,8 +42,6 @@ func (p *Parser) Parse() *ast.SimpleASTNode {
 // 解析语句（示例：只处理 let 语句）
 func (p *Parser) parseStatement() ast.Statement {
 	switch p.curTok.Type {
-	case token.LET:
-		return p.parseLetStatement()
 	case token.INT_TYPE:
 		return p.parseVarDeclaration()
 	default:
@@ -51,16 +49,7 @@ func (p *Parser) parseStatement() ast.Statement {
 	}
 }
 
-func (p *Parser) parseLetStatement() *ast.LetStatement {
-	stmt := &ast.LetStatement{Token: p.curTok}
-	// 这里简化为直接消费 Token，实际需要完整解析 let x = 5; 的结构
-	p.nextToken() // 跳过 let
-	p.nextToken() // 跳过标识符
-	p.nextToken() // 跳过 =
-	p.nextToken() // 跳过值
-	p.nextToken() // 跳过 ;
-	return stmt
-}
+
 
 // 解析 int a = 10; 这种声明
 func (p *Parser) parseVarDeclaration() *ast.VarDeclaration {
@@ -98,4 +87,74 @@ func (p *Parser) parseVarDeclaration() *ast.VarDeclaration {
 	}
 
 	return decl
+}
+
+// 解析乘法表达式（* 和 /），递归处理左结合
+func (p *Parser) multiplicative() *ast.SimpleASTNode {
+	child1 := p.primary()
+	node := child1
+
+	for {
+		if node != nil && (p.curTok.Type == token.ASTERISK || p.curTok.Type == token.SLASH) {
+			opTok := p.curTok
+			p.nextToken()
+			child2 := p.primary()
+			if child2 != nil {
+				newNode := ast.NewSimpleASTNode(opTok, []ast.Node{})
+				newNode.ChildNodes = append(newNode.ChildNodes, node)
+				newNode.ChildNodes = append(newNode.ChildNodes, child2)
+				node = newNode
+			} else {
+				return nil
+			}
+		} else {
+			break
+		}
+	}
+	return node
+}
+
+// 解析加法表达式（+），递归处理左结合
+func (p *Parser) additive() *ast.SimpleASTNode {
+	child1 := p.multiplicative()
+	node := child1
+
+	for {
+		if node != nil && p.curTok.Type == token.PLUS {
+			opTok := p.curTok
+			p.nextToken()
+			child2 := p.additive()
+			if child2 != nil {
+				newNode := ast.NewSimpleASTNode(opTok, []ast.Node{})
+				newNode.ChildNodes = append(newNode.ChildNodes, node)
+				newNode.ChildNodes = append(newNode.ChildNodes, child2)
+				node = newNode
+			} else {
+				return nil
+			}
+		} else {
+			break
+		}
+	}
+	return node
+}
+
+// 解析基础表达式（整数字面量、括号等）
+func (p *Parser) primary() *ast.SimpleASTNode {
+	if p.curTok.Type == token.INT {
+		tok := p.curTok
+		p.nextToken()
+		node := ast.NewSimpleASTNode(tok, []ast.Node{})
+		return node
+	} else if p.curTok.Type == token.LPAREN {
+		p.nextToken() // 消耗 (
+		node := p.additive()
+		if p.curTok.Type == token.RPAREN {
+			p.nextToken() // 消耗 )
+			return node
+		} else {
+			return nil // 缺少右括号
+		}
+	}
+	return nil
 }
