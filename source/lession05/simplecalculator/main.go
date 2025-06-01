@@ -1,7 +1,7 @@
 package main
 
 import (
-	"GoPlayWithCompiler/craft"
+	"GoPlayWithCompiler/source/lession05/craft"
 	"bufio"
 	"flag"
 	"fmt"
